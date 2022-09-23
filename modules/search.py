@@ -33,7 +33,7 @@ class Search:
             until=until,
             tweet_mode='extended',
             count=100).items(amount)]
-        return Tweets_Collection(tweets_list)
+        return Tweets_Collection(tweets_list, 'recent')
 
 
     def _30_days(self, query: str, lang=None, since=None, until=None, amount=math.inf):
@@ -50,7 +50,7 @@ class Search:
             fromDate=since,
             toDate=until,
             maxResults=100).items(amount)]
-        return Tweets_Collection(tweets_list)
+        return Tweets_Collection(tweets_list, '30_days')
 
 
     def _archive(self, query: str, lang=None, since=None, until=None, amount=math.inf):
@@ -67,4 +67,4 @@ class Search:
             fromDate=since,
             toDate=until,
             maxResults=100).items(amount)]
-        return Tweets_Collection(tweets_list)
+        return Tweets_Collection(tweets_list, 'archive')
