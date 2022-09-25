@@ -95,13 +95,29 @@ class Tweets_Collection:
                     'user_id': tweet['in_reply_to_user_id'],
                     'tweet_id': tweet['in_reply_to_status_id']
                 })
-            if tweet['is_quote_status']:                                        # quote
-                df_content['quoted_from'].append({
+            if 'quoted_status' in tweet.keys():
+                if self.search_type == 'recent':                                # quote
+                    df_content['quoted_from'].append({
                     'user': tweet['quoted_status']['user']['screen_name'],
                     'user_id': tweet['quoted_status']['user']['id'],
                     'tweet_id': tweet['quoted_status']['id'],
-                    'quoted_content': tweet['quoted_status']['text']
+                    'quoted_content': tweet['quoted_status']['full_text']
                 })
+                else:
+                    if tweet['quoted_status']['truncated']:
+                        df_content['quoted_from'].append({
+                        'user': tweet['quoted_status']['user']['screen_name'],
+                        'user_id': tweet['quoted_status']['user']['id'],
+                        'tweet_id': tweet['quoted_status']['id'],
+                        'quoted_content': tweet['quoted_status']['extended_tweet']['full_text']
+                    })
+                    else:
+                        df_content['quoted_from'].append({
+                            'user': tweet['quoted_status']['user']['screen_name'],
+                            'user_id': tweet['quoted_status']['user']['id'],
+                            'tweet_id': tweet['quoted_status']['id'],
+                            'quoted_content': tweet['quoted_status']['text']
+                        })
             else:
                 df_content['quoted_from'].append(None)
             if is_retweet:                                                      # hashtags
@@ -131,5 +147,3 @@ class Tweets_Collection:
             df_content['user_mentions'].append('0')
 
         return pd.DataFrame(df_content)
-
-
