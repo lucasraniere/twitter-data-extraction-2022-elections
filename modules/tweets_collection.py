@@ -1,4 +1,3 @@
-from operator import is_
 import pandas as pd
 
 columns = [
