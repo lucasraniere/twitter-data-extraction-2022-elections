@@ -3,6 +3,17 @@ from modules.tweets_collection import Tweets_Collection
 import modules.utils as utils
 import math
 
+fields = {
+    'expansions' : ['author_id', 'referenced_tweets.id', 'in_reply_to_user_id',
+                    'attachments.media_keys', 'geo.place_id', 'entities.mentions.username',
+                    'referenced_tweets.id.author_id'],
+    'media': ['type', 'url', 'public_metrics'],
+    'place': ['full_name', 'country', 'country_code', 'place_type'],
+    'tweet':['id', 'text', 'created_at', 'author_id', 'conversation_id', 'entities', 'geo', 'in_reply_to_user_id',
+              'public_metrics', 'referenced_tweets', 'source'],
+    'user': ['id', 'name', 'username', 'created_at', 'description', 'public_metrics']
+}
+
 class Search:
     def __init__(self, consumer_key, consumer_secret, access_token, access_token_secret, bearer_token, label):
         self.consumer_key = consumer_key
@@ -14,6 +25,7 @@ class Search:
         self.auth = tw.OAuthHandler(self.consumer_key, self.consumer_secret)
         self.auth.set_access_token(self.access_token, self.access_token_secret)
         self.api = tw.API(self.auth, wait_on_rate_limit=True)
+        self.client = tw.Client(bearer_token=bearer_token, wait_on_rate_limit=True)
 
 
     def get_authenticator(self):
@@ -22,6 +34,9 @@ class Search:
 
     def get_api(self):
         return self.api
+
+    def get_client(self):
+        return self.client
 
 
     def _recent(self, query: str, lang='pt', result_type='mixed', until=None, amount=math.inf):
@@ -37,11 +52,11 @@ class Search:
 
 
     def _30_days(self, query: str, lang=None, since=None, until=None, amount=math.inf):
-        if lang is not None:
+        if lang:
             query = query + f' lang:{lang}'
-        if since is not None:
+        if since:
             since = utils.convert_date(since)
-        if until is not None:
+        if until:
             until = utils.convert_date(until)
         tweets_list = [tweet._json for tweet in tw.Cursor(
             self.api.search_30_day,
@@ -68,3 +83,71 @@ class Search:
             toDate=until,
             maxResults=100).items(amount)]
         return Tweets_Collection(tweets_list, 'archive')
+
+
+    def _recent_api2(self, query: str, lang=None, since=None, until=None, max_results_for_page=100, number_pages=math.inf):
+        if lang:
+            query = query + f' lang:{lang}'
+        if since:
+            since = utils.conv_date_ISO(since)
+        if until:
+            until = utils.conv_date_ISO(until)
+        tweets = []
+        includes = {
+            'users': [],
+            'tweets': [],
+            'media': []
+        }
+        for page in tw.Paginator(
+            self.client.search_recent_tweets,
+            query=query,
+            end_time=until,
+            start_time=since,
+            max_results=max_results_for_page,
+            sort_order='recency',
+            expansions=fields['expansions'],
+            media_fields=fields['media'],
+            place_fields=fields['place'],
+            tweet_fields=fields['tweet'],
+            user_fields=fields['user'],
+            limit=number_pages):
+
+            tweets.extend(page.data)
+            includes['users'].extend(page.includes['users'])
+            includes['tweets'].extend(page.includes['tweets'])
+            includes['media'].extend(page.includes['media'])
+
+        return Tweets_Collection([tweets, includes], 'recent_apiV2')
+
+    def _archive_api2(self, query: str, lang=None, since=None, until=None, max_results_for_page=500, number_pages=math.inf):
+        if lang:
+            query = query + f' lang:{lang}'
+        if since:
+            since = utils.conv_date_ISO(since)
+        if until:
+            until = utils.conv_date_ISO(until)
+        tweets = []
+        includes = {
+            'users': [],
+            'tweets': [],
+            'media': []
+        }
+        for page in tw.Paginator(
+            self.client.search_all_tweets,
+            query=query,
+            end_time=until,
+            start_time=since,
+            max_results=max_results_for_page,
+            sort_order='recency',
+            expansions=fields['expansions'],
+            media_fields=fields['media'],
+            place_fields=fields['place'],
+            tweet_fields=fields['tweet'],
+            user_fields=fields['user'],
+            limit=number_pages):
+
+            tweets.extend(page.data)
+            includes['users'].extend(page.includes['users'])
+            includes['tweets'].extend(page.includes['tweets'])
+            includes['media'].extend(page.includes['media'])
+        return Tweets_Collection([tweets, includes], 'archive_apiV2')

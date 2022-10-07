@@ -20,3 +20,12 @@ def convert_date(date: str):
     if conv_date != 'INVALID DATE FORMAT':
         conv_date = convert_timezone(conv_date)
     return conv_date
+
+
+def conv_date_ISO(date: str):
+    conv_date = convert_date(date)
+    conv_date = conv_date + '00'
+    date_time = datetime.strptime(conv_date, '%Y%m%d%H%M%S')
+    conv_date = date_time.isoformat('T') + 'Z'
+    return conv_date
+
