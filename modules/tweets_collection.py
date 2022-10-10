@@ -235,6 +235,7 @@ class Tweets_Collection:
                             'description': user.description,
                             'created_at': user.created_at.strftime('%Y-%m-%d %H:%M:%S')
                         })
+                        break
                 df_content['has_mention'].append('0')
                 df_content['mentions'].append('0')
                 df_content['is_reply'].append('0')
