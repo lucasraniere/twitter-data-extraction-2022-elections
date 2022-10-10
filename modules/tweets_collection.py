@@ -7,11 +7,16 @@ columns = [
     'hashtags'
 ]
 
+columns_v2 = [
+    'created_at', 'tweet_id', 'tweet_content', 'user', 'user_info', 'has_mention', 'mentions', 'is_reply',
+    'reply_to', 'is_quote', 'quoted_from', 'is_retweet', 'retweeted_from', 'hashtags'
+]
+
 class Tweets_Collection:
     def __init__(self, tweets_list: list, search_type: str):
         self.tweets_json = tweets_list
         self.search_type = search_type
-        if search_type != 'recent_apiV2' or search_type != 'archive_apiV2':
+        if search_type!='recent_apiV2' and search_type!='archive_apiV2':
             self._amount =  len(tweets_list)
         else:
             self._amount = len(tweets_list[0])
@@ -27,9 +32,9 @@ class Tweets_Collection:
 
     def get_dataframe(self):
         df_content = {}
-        for column in columns:
-            df_content[column] = []
         if self.search_type=='recent' or self.search_type=='archive' or self.search_type=='30_days':
+            for column in columns:
+                df_content[column] = []
             for tweet in self.tweets_json:
                 native_mentions = False
                 retweet_mentions = False
@@ -213,17 +218,25 @@ class Tweets_Collection:
                         df_content['quoted_from'].append(None)
                 df_content['has_mention'].append(True if native_mentions or retweet_mentions else False)                                    # has mentions
         else:
+            for column in columns_v2:
+                df_content[column] = []
             tweet_data = self.tweets_json[0]
             tweet_includes = self.tweets_json[1]
-            for tweet in self.tweets_json:
+            for tweet in tweet_data:
                 df_content['created_at'].append(tweet.created_at.strftime('%Y-%m-%d %H:%M:%S'))
                 df_content['tweet_id'].append(tweet.id)
                 df_content['tweet_content'].append(tweet.text)
-                df_content['user'].append('0')
-                df_content['user_info'].append('0')
+                for user in tweet_includes['users']:
+                    if user.id == int(tweet['author_id']):
+                        df_content['user'].append(user.username)
+                        df_content['user_info'].append({
+                            'id': user.id,
+                            'name': user.name,
+                            'description': user.description,
+                            'created_at': user.created_at.strftime('%Y-%m-%d %H:%M:%S')
+                        })
                 df_content['has_mention'].append('0')
-                df_content['native_mentions'].append('0')
-                df_content['retweet_mentions'].append('0')
+                df_content['mentions'].append('0')
                 df_content['is_reply'].append('0')
                 df_content['reply_to'].append('0')
                 df_content['is_quote'].append('0')
