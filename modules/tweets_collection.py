@@ -1,3 +1,4 @@
+from weakref import ref
 import pandas as pd
 from datetime import datetime
 
@@ -9,7 +10,7 @@ columns = [
 
 columns_v2 = [
     'created_at', 'tweet_id', 'tweet_content', 'user', 'user_info', 'has_mention', 'mentions', 'is_reply',
-    'reply_to', 'is_quote', 'quoted_from', 'is_retweet', 'retweeted_from', 'hashtags'
+    'is_quote', 'is_retweet', 'referenced_user', 'referenced_tweet', 'hashtags'
 ]
 
 class Tweets_Collection:
@@ -223,26 +224,94 @@ class Tweets_Collection:
             tweet_data = self.tweets_json[0]
             tweet_includes = self.tweets_json[1]
             for tweet in tweet_data:
+                has_ref = True if 'referenced_tweets' in tweet.data.keys() else False
+                is_retweet = False
+                is_quoted = False
+                is_reply = False
+                referenced_tt_id = None
+                if has_ref:
+                    referenced_tt_id = tweet.referenced_tweets[0].id
+                    if tweet.referenced_tweets[0].type == 'retweeted':
+                        is_retweet = True
+                    elif tweet.referenced_tweets[0].type == 'quoted':
+                        is_quoted = True
+                    elif tweet.referenced_tweets[0].type == 'replied_to':
+                        is_reply = True
                 df_content['created_at'].append(tweet.created_at.strftime('%Y-%m-%d %H:%M:%S'))
                 df_content['tweet_id'].append(tweet.id)
-                df_content['tweet_content'].append(tweet.text)
                 for user in tweet_includes['users']:
-                    if user.id == int(tweet['author_id']):
+                    if user.id == tweet.author_id:
                         df_content['user'].append(user.username)
                         df_content['user_info'].append({
                             'id': user.id,
                             'name': user.name,
                             'description': user.description,
-                            'created_at': user.created_at.strftime('%Y-%m-%d %H:%M:%S')
+                            'created_at': user.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                            'public_metrics': user.public_metrics
                         })
                         break
-                df_content['has_mention'].append('0')
-                df_content['mentions'].append('0')
-                df_content['is_reply'].append('0')
-                df_content['reply_to'].append('0')
-                df_content['is_quote'].append('0')
-                df_content['quoted_from'].append('0')
-                df_content['is_retweet'].append('0')
-                df_content['retweeted_from'].append('0')
-                df_content['hashtags'].append('0')
+                if is_retweet:
+                    ref_tweet = None
+                    for tt in tweet_includes['tweets']:
+                        if tt.id == referenced_tt_id:
+                            ref_tweet = {
+                                'text': tt.text,
+                                'entities': tt.entities
+                            }
+                            break
+                    df_content['tweet_content'].append(ref_tweet['text'])
+                    if 'hashtags' in ref_tweet['entities']:
+                        df_content['hashtags'].append(['#'+hashtag['tag'] for hashtag in ref_tweet['entities']['hashtags']])
+                    else:
+                        df_content['hashtags'].append(None)
+                    if 'mentions' in ref_tweet['entities']:
+                        df_content['has_mention'].append(True)
+                        df_content['mentions'].append([{'id':mention['id'],'username':mention['username']} for mention in ref_tweet['entities']['mentions']])
+                    else:
+                        df_content['has_mention'].append(False)
+                        df_content['mentions'].append(None)
+                else:
+                    df_content['tweet_content'].append(tweet.text)
+                    if 'hashtags' in tweet.entities.keys():
+                        df_content['hashtags'].append(['#'+hashtag['tag'] for hashtag in tweet.entities['hashtags']])
+                    else:
+                        df_content['hashtags'].append(None)
+                    if 'mentions' in tweet.entities.keys():
+                        df_content['has_mention'].append(True)
+                        df_content['mentions'].append([{'id':mention['id'],'username':mention['username']} for mention in tweet.entities['mentions']])
+                    else:
+                        df_content['has_mention'].append(False)
+                        df_content['mentions'].append(None)
+                df_content['is_reply'].append(is_reply)
+                df_content['is_quote'].append(is_quoted)
+                df_content['is_retweet'].append(is_retweet)
+                if has_ref:
+                    ref_tweet = None
+                    ref_user = None
+                    for tt in tweet_includes['tweets']:
+                        if tt.id == referenced_tt_id:
+                            ref_tweet = {
+                                'created_at': tt.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                                'id': referenced_tt_id,
+                                'author_id': tt.author_id,
+                                'tweet_content': tt.text,
+                                'entities': tt.entities,
+                                'public_metrics': tt.public_metrics,
+                            }
+                            break
+                    for user in tweet_includes['users']:
+                        if user.id == ref_tweet['author_id']:
+                            ref_user = {
+                                'id': user.id,
+                                'username': user.username,
+                                'name': user.name,
+                                'description': user.description,
+                                'created_at': user.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                                'public_metrics': user.public_metrics
+                            }
+                    df_content['referenced_tweet'].append(ref_tweet)
+                    df_content['referenced_user'].append(ref_user)
+                else:
+                    df_content['referenced_user'].append(None)
+                    df_content['referenced_tweet'].append(None)
         return pd.DataFrame(df_content)
