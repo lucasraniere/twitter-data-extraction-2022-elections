@@ -147,7 +147,10 @@ class Search:
             limit=number_pages):
 
             tweets.extend(page.data)
-            includes['users'].extend(page.includes['users'])
-            includes['tweets'].extend(page.includes['tweets'])
-            includes['media'].extend(page.includes['media'])
+            if 'users' in page.includes.keys():
+                includes['users'].extend(page.includes['users'])
+            if 'tweets' in page.includes.keys():
+                includes['tweets'].extend(page.includes['tweets'])
+            if 'media' in page.includes.keys():
+                includes['media'].extend(page.includes['media'])
         return Tweets_Collection([tweets, includes], 'archive_apiV2')
