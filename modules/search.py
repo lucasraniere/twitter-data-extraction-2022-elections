@@ -1,3 +1,4 @@
+from netrc import netrc
 import tweepy as tw
 from modules.tweets_collection import Tweets_Collection
 import modules.utils as utils
@@ -119,7 +120,47 @@ class Search:
 
         return Tweets_Collection([tweets, includes], 'recent_apiV2')
 
-    def _archive_api2(self, query: str, lang=None, since=None, until=None, max_results_for_page=500, number_pages=math.inf):
+    # def _archive_api2(self, query: str, lang=None, since=None, until=None, max_results_for_page=500, number_pages=math.inf):
+    #     if lang:
+    #         query = query + f' lang:{lang}'
+    #     if since:
+    #         since = utils.conv_date_ISO(since)
+    #     if until:
+    #         until = utils.conv_date_ISO(until)
+    #     tweets = []
+    #     includes = {
+    #         'users': [],
+    #         'tweets': [],
+    #         'media': []
+    #     }
+    #     for page in tw.Paginator(
+    #         self.client.search_all_tweets,
+    #         query=query,
+    #         end_time=until,
+    #         start_time=since,
+    #         max_results=max_results_for_page,
+    #         sort_order='recency',
+    #         expansions=fields['expansions'],
+    #         media_fields=fields['media'],
+    #         place_fields=fields['place'],
+    #         tweet_fields=fields['tweet'],
+    #         user_fields=fields['user'],
+    #         limit=number_pages):
+
+    #         tweets.extend(page.data)
+    #         if 'users' in page.includes.keys():
+    #             includes['users'].extend(page.includes['users'])
+    #         if 'tweets' in page.includes.keys():
+    #             includes['tweets'].extend(page.includes['tweets'])
+    #         if 'media' in page.includes.keys():
+    #             includes['media'].extend(page.includes['media'])
+    #     return Tweets_Collection([tweets, includes], 'archive_apiV2')
+
+
+    def _archive_api2(self, query: str, lang=None, since=None, until=None, max_results=math.inf):
+        search_max_results = 500
+        if max_results < 500:
+            search_max_results = max_results
         if lang:
             query = query + f' lang:{lang}'
         if since:
@@ -129,28 +170,88 @@ class Search:
         tweets = []
         includes = {
             'users': [],
-            'tweets': [],
-            'media': []
+            'tweets': []
         }
-        for page in tw.Paginator(
-            self.client.search_all_tweets,
-            query=query,
-            end_time=until,
-            start_time=since,
-            max_results=max_results_for_page,
-            sort_order='recency',
-            expansions=fields['expansions'],
-            media_fields=fields['media'],
-            place_fields=fields['place'],
-            tweet_fields=fields['tweet'],
-            user_fields=fields['user'],
-            limit=number_pages):
-
-            tweets.extend(page.data)
-            if 'users' in page.includes.keys():
-                includes['users'].extend(page.includes['users'])
-            if 'tweets' in page.includes.keys():
-                includes['tweets'].extend(page.includes['tweets'])
-            if 'media' in page.includes.keys():
-                includes['media'].extend(page.includes['media'])
+        next_token = ''
+        tweets_count = 0
+        while(True):
+            if next_token == '':
+                tts = self.client.search_all_tweets(
+                    query=query,
+                    end_time=until,
+                    start_time=since,
+                    max_results=search_max_results,
+                    sort_order='recency',
+                    expansions=fields['expansions'],
+                    media_fields=fields['media'],
+                    place_fields=fields['place'],
+                    tweet_fields=fields['tweet'],
+                    user_fields=fields['user']
+                )
+                tweets_count += len(tts.data)
+                tweets.extend(tts.data)
+                if 'users' in tts.includes.keys():
+                    includes['users'].extend(tts.includes['users'])
+                if 'tweets' in tts.includes.keys():
+                    includes['tweets'].extend(tts.includes['tweets'])
+                if 'next_token' in tts.meta.keys():
+                    next_token = tts.meta['next_token']
+                else:
+                    break
+                if tweets_count == max_results:
+                    break
+            else:
+                if not math.isinf(max_results) and tweets_count + search_max_results > max_results:
+                    search_max_results = max_results - tweets_count
+                    if search_max_results < 10:
+                        search_max_results = 10
+                    tts = self.client.search_all_tweets(
+                        query=query,
+                        end_time=until,
+                        start_time=since,
+                        max_results=search_max_results,
+                        sort_order='recency',
+                        expansions=fields['expansions'],
+                        media_fields=fields['media'],
+                        place_fields=fields['place'],
+                        tweet_fields=fields['tweet'],
+                        user_fields=fields['user']
+                    )
+                    tweets_count += len(tts.data)
+                    tweets.extend(tts.data)
+                    if 'users' in tts.includes.keys():
+                        includes['users'].extend(tts.includes['users'])
+                    if 'tweets' in tts.includes.keys():
+                        includes['tweets'].extend(tts.includes['tweets'])
+                    if 'next_token' in tts.meta.keys():
+                        next_token = tts.meta['next_token']
+                    else:
+                        break
+                    if tweets_count == max_results:
+                        break
+                else:
+                    tts = self.client.search_all_tweets(
+                        query=query,
+                        end_time=until,
+                        start_time=since,
+                        max_results=search_max_results,
+                        sort_order='recency',
+                        expansions=fields['expansions'],
+                        media_fields=fields['media'],
+                        place_fields=fields['place'],
+                        tweet_fields=fields['tweet'],
+                        user_fields=fields['user']
+                    )
+                    tweets_count += len(tts.data)
+                    tweets.extend(tts.data)
+                    if 'users' in tts.includes.keys():
+                        includes['users'].extend(tts.includes['users'])
+                    if 'tweets' in tts.includes.keys():
+                        includes['tweets'].extend(tts.includes['tweets'])
+                    if 'next_token' in tts.meta.keys():
+                        next_token = tts.meta['next_token']
+                    else:
+                        break
+                    if tweets_count == max_results:
+                        break
         return Tweets_Collection([tweets, includes], 'archive_apiV2')
