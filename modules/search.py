@@ -1,8 +1,10 @@
 from netrc import netrc
+
+from requests import request
 import tweepy as tw
 from modules.tweets_collection import Tweets_Collection
 import modules.utils as utils
-import math
+import math, time
 
 fields = {
     'expansions' : ['author_id', 'referenced_tweets.id', 'in_reply_to_user_id',
@@ -26,7 +28,7 @@ class Search:
         self.auth = tw.OAuthHandler(self.consumer_key, self.consumer_secret)
         self.auth.set_access_token(self.access_token, self.access_token_secret)
         self.api = tw.API(self.auth, wait_on_rate_limit=True)
-        self.client = tw.Client(bearer_token=bearer_token, wait_on_rate_limit=True)
+        self.client = tw.Client(bearer_token=bearer_token, wait_on_rate_limit=False)
 
 
     def get_authenticator(self):
@@ -174,7 +176,10 @@ class Search:
         }
         next_token = ''
         tweets_count = 0
+        requests_count = 0
+        start = time.time()
         while(True):
+            request_start = time.time()
             if next_token == '':
                 tts = self.client.search_all_tweets(
                     query=query,
@@ -200,6 +205,15 @@ class Search:
                     break
                 if tweets_count == max_results:
                     break
+                request_end = time.time()
+                requests_count += 1
+                if requests_count == 300 and request_end - start < 900.0:
+                    requests_count = 0
+                    print(f'Limit rate reached. Sleeping for{request_end - start} seconds')
+                    time.sleep(request_end - start)
+                    start = time.time()
+                if request_end - request_start < 1.0:
+                    time.sleep(request_end - request_start)
             else:
                 if not math.isinf(max_results) and tweets_count + search_max_results > max_results:
                     search_max_results = max_results - tweets_count
@@ -229,6 +243,15 @@ class Search:
                         break
                     if tweets_count == max_results:
                         break
+                    request_end = time.time()
+                    requests_count += 1
+                    if requests_count == 300 and request_end - start < 900.0:
+                        requests_count = 0
+                        print(f'Limit rate reached. Sleeping for{request_end - start} seconds')
+                        time.sleep(request_end - start)
+                        start = time.time()
+                    if request_end - request_start < 1.0:
+                        time.sleep(request_end - request_start)
                 else:
                     tts = self.client.search_all_tweets(
                         query=query,
@@ -254,4 +277,13 @@ class Search:
                         break
                     if tweets_count == max_results:
                         break
+                    request_end = time.time()
+                    requests_count += 1
+                    if requests_count == 300 and request_end - start < 900.0:
+                        requests_count = 0
+                        print(f'Limit rate reached. Sleeping for{request_end - start} seconds')
+                        time.sleep(request_end - start)
+                        start = time.time()
+                    if request_end - request_start < 1.0:
+                        time.sleep(request_end - request_start)
         return Tweets_Collection([tweets, includes], 'archive_apiV2')
