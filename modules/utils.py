@@ -18,7 +18,7 @@ def convert_date(date: str):
     else:
         conv_date = 'INVALID DATE FORMAT'
     if conv_date != 'INVALID DATE FORMAT':
-        conv_date = convert_timezone(conv_date)
+       conv_date = convert_timezone(conv_date)
     return conv_date
 
 

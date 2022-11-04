@@ -18,7 +18,7 @@ fields = {
 }
 
 class Search:
-    def __init__(self, consumer_key, consumer_secret, access_token, access_token_secret, bearer_token, label):
+    def __init__(self, consumer_key, consumer_secret, access_token, access_token_secret, bearer_token, label, wait_on_rate_limit=True):
         self.consumer_key = consumer_key
         self.consumer_secret = consumer_secret
         self.access_token = access_token
@@ -28,7 +28,7 @@ class Search:
         self.auth = tw.OAuthHandler(self.consumer_key, self.consumer_secret)
         self.auth.set_access_token(self.access_token, self.access_token_secret)
         self.api = tw.API(self.auth, wait_on_rate_limit=True)
-        self.client = tw.Client(bearer_token=bearer_token, wait_on_rate_limit=False)
+        self.client = tw.Client(bearer_token=bearer_token, wait_on_rate_limit=wait_on_rate_limit)
 
 
     def get_authenticator(self):
@@ -115,51 +115,56 @@ class Search:
             user_fields=fields['user'],
             limit=number_pages):
 
-            tweets.extend(page.data)
-            includes['users'].extend(page.includes['users'])
-            includes['tweets'].extend(page.includes['tweets'])
-            includes['media'].extend(page.includes['media'])
+            if page.data:
+                tweets.extend(page.data)
+            if 'users' in page.includes.keys():
+                includes['users'].extend(page.includes['users'])
+            if 'tweets' in page.includes.keys():
+                includes['tweets'].extend(page.includes['tweets'])
+            if 'media' in page.includes.keys():
+                includes['media'].extend(page.includes['media'])
 
         return Tweets_Collection([tweets, includes], 'recent_apiV2')
 
-    # def _archive_api2(self, query: str, lang=None, since=None, until=None, max_results_for_page=500, number_pages=math.inf):
-    #     if lang:
-    #         query = query + f' lang:{lang}'
-    #     if since:
-    #         since = utils.conv_date_ISO(since)
-    #     if until:
-    #         until = utils.conv_date_ISO(until)
-    #     tweets = []
-    #     includes = {
-    #         'users': [],
-    #         'tweets': [],
-    #         'media': []
-    #     }
-    #     for page in tw.Paginator(
-    #         self.client.search_all_tweets,
-    #         query=query,
-    #         end_time=until,
-    #         start_time=since,
-    #         max_results=max_results_for_page,
-    #         sort_order='recency',
-    #         expansions=fields['expansions'],
-    #         media_fields=fields['media'],
-    #         place_fields=fields['place'],
-    #         tweet_fields=fields['tweet'],
-    #         user_fields=fields['user'],
-    #         limit=number_pages):
 
-    #         tweets.extend(page.data)
-    #         if 'users' in page.includes.keys():
-    #             includes['users'].extend(page.includes['users'])
-    #         if 'tweets' in page.includes.keys():
-    #             includes['tweets'].extend(page.includes['tweets'])
-    #         if 'media' in page.includes.keys():
-    #             includes['media'].extend(page.includes['media'])
-    #     return Tweets_Collection([tweets, includes], 'archive_apiV2')
+    def _archive_api2_wait_true(self, query: str, lang=None, since=None, until=None, max_results_for_page=500, number_pages=math.inf):
+        if lang:
+            query = query + f' lang:{lang}'
+        if since:
+            since = utils.conv_date_ISO(since)
+        if until:
+            until = utils.conv_date_ISO(until)
+        tweets = []
+        includes = {
+            'users': [],
+            'tweets': [],
+            'media': []
+        }
+        for page in tw.Paginator(
+            self.client.search_all_tweets,
+            query=query,
+            end_time=until,
+            start_time=since,
+            max_results=max_results_for_page,
+            sort_order='recency',
+            expansions=fields['expansions'],
+            media_fields=fields['media'],
+            place_fields=fields['place'],
+            tweet_fields=fields['tweet'],
+            user_fields=fields['user'],
+            limit=number_pages):
+
+            tweets.extend(page.data)
+            if 'users' in page.includes.keys():
+                includes['users'].extend(page.includes['users'])
+            if 'tweets' in page.includes.keys():
+                includes['tweets'].extend(page.includes['tweets'])
+            if 'media' in page.includes.keys():
+                includes['media'].extend(page.includes['media'])
+        return Tweets_Collection([tweets, includes], 'archive_apiV2')
 
 
-    def _archive_api2(self, query: str, lang=None, since=None, until=None, max_results=math.inf):
+    def _archive_api2_wait_false(self, query: str, lang=None, since=None, until=None, max_results=math.inf):
         search_max_results = 500
         if max_results < 500:
             search_max_results = max_results
@@ -213,7 +218,7 @@ class Search:
                     time.sleep(request_end - start)
                     start = time.time()
                 if request_end - request_start < 1.0:
-                    time.sleep(request_end - request_start)
+                   time.sleep(request_end - request_start)
             else:
                 if not math.isinf(max_results) and tweets_count + search_max_results > max_results:
                     search_max_results = max_results - tweets_count
