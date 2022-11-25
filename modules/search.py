@@ -217,8 +217,9 @@ class Search:
                     print(f'Limit rate reached. Sleeping for{request_end - start} seconds')
                     time.sleep(request_end - start)
                     start = time.time()
-                if request_end - request_start < 1.0:
-                   time.sleep(request_end - request_start)
+                #if request_end - request_start < 1.0:
+                   #time.sleep(request_end - request_start)
+                time.sleep(2)
             else:
                 if not math.isinf(max_results) and tweets_count + search_max_results > max_results:
                     search_max_results = max_results - tweets_count
@@ -255,8 +256,9 @@ class Search:
                         print(f'Limit rate reached. Sleeping for{request_end - start} seconds')
                         time.sleep(request_end - start)
                         start = time.time()
-                    if request_end - request_start < 1.0:
-                        time.sleep(request_end - request_start)
+                    # if request_end - request_start < 1.0:
+                    #     time.sleep(request_end - request_start)
+                    time.sleep(2)
                 else:
                     tts = self.client.search_all_tweets(
                         query=query,
@@ -289,6 +291,7 @@ class Search:
                         print(f'Limit rate reached. Sleeping for{request_end - start} seconds')
                         time.sleep(request_end - start)
                         start = time.time()
-                    if request_end - request_start < 1.0:
-                        time.sleep(request_end - request_start)
+                    # if request_end - request_start < 1.0:
+                    #     time.sleep(request_end - request_start)
+                    time.sleep(2)
         return Tweets_Collection([tweets, includes], 'archive_apiV2')
