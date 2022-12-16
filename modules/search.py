@@ -146,7 +146,7 @@ class Search:
             end_time=until,
             start_time=since,
             max_results=max_results_for_page,
-            sort_order='recency',
+            sort_order='recency', # may be recency
             expansions=fields['expansions'],
             media_fields=fields['media'],
             place_fields=fields['place'],
